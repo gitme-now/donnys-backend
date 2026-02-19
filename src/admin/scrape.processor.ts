@@ -131,9 +131,10 @@ export class ScrapeProcessor extends WorkerHost {
     console.log('[ScrapeProcessor] resolved channel URL', { channelUrl });
 
     // Run yt-dlp to fetch video metadata
+    // Note: do NOT use --flat-playlist here — it omits thumbnail, duration,
+    // description, and upload_date, which causes thumbnailUrl to always be null.
     const args = [
       '--dump-json',
-      '--flat-playlist',
       '--playlist-end', '50',
       '--no-warnings',
       channelUrl,
