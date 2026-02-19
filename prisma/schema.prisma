@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Source {
+  YOUTUBE
+  FACEBOOK
+}
+
+enum ScrapeStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+enum Trigger {
+  SCHEDULED
+  MANUAL
+}
+
+model Video {
+  id            String   @id @default(cuid())
+  remoteId      String
+  source        Source
+  title         String
+  description   String?
+  remoteUrl     String
+  thumbnailUrl  String?
+  duration      Int?
+  publishedAt   DateTime?
+  channelHandle String
+  rawMeta       Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([remoteId, source])
+  @@index([channelHandle])
+}
+
+model Photo {
+  id            String   @id @default(cuid())
+  remoteId      String
+  source        Source
+  remoteUrl     String
+  thumbnailUrl  String?
+  caption       String?
+  albumId       String?
+  publishedAt   DateTime?
+  channelHandle String
+  rawMeta       Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([remoteId, source])
+  @@index([channelHandle])
+}
+
+model Event {
+  id            String   @id @default(cuid())
+  remoteId      String
+  source        Source
+  title         String
+  description   String?
+  location      String?
+  startAt       DateTime?
+  endAt         DateTime?
+  remoteUrl     String
+  thumbnailUrl  String?
+  channelHandle String
+  rawMeta       Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([remoteId, source])
+  @@index([channelHandle])
+}
+
+model Contact {
+  id            String   @id @default(cuid())
+  source        Source
+  channelHandle String
+  pageName      String?
+  phone         String?
+  email         String?
+  website       String?
+  address       String?
+  rawMeta       Json?
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  @@unique([channelHandle, source])
+}
+
+model ScrapeRun {
+  id            String       @id @default(cuid())
+  source        Source
+  channelHandle String
+  status        ScrapeStatus
+  trigger       Trigger
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  itemsProcessed Int?
+  errorMessage  String?
+  createdAt     DateTime     @default(now())
+
+  @@index([channelHandle])
+  @@index([status])
+}
