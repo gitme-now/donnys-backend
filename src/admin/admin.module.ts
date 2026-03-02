@@ -5,6 +5,7 @@ import { AdminService, SCRAPE_QUEUE } from './admin.service';
 import { ScrapeProcessor } from './scrape.processor';
 import { S3Service } from '../common/services/s3.service';
 import { YtDlpService } from '../common/services/ytdlp.service';
+import { PlaywrightService } from '../common/services/playwright.service';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { YtDlpService } from '../common/services/ytdlp.service';
     }),
   ],
   controllers: [AdminController],
-  providers: [AdminService, ScrapeProcessor, S3Service, YtDlpService],
+  providers: [AdminService, ScrapeProcessor, S3Service, YtDlpService, PlaywrightService],
   exports: [AdminService],
 })
 export class AdminModule {}

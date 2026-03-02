@@ -14,24 +14,22 @@ RUN npm run build
 RUN npx prisma generate
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:20-bullseye-slim AS production
 
 WORKDIR /app
 
-# ffmpeg is needed by yt-dlp for post-processing
-RUN apk add --no-cache ffmpeg
-
-# Install Playwright dependencies (Chromium for Facebook scraping)
-RUN apk add --no-cache \
+# ffmpeg and Chromium are needed for yt-dlp and Playwright (Facebook scraping).
+# Install OpenSSL so Prisma's native engine can load libssl.so.1.1
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
     chromium \
-    nss \
-    freetype \
-    harfbuzz \
     ca-certificates \
-    ttf-freefont
+    fonts-freefont-ttf \
+    libnss3 \
+    openssl && rm -rf /var/lib/apt/lists/*
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PLAYWRIGHT_BROWSERS_PATH=/usr/bin/chromium-browser
+ENV PLAYWRIGHT_BROWSERS_PATH=/usr/bin/chromium
 
 COPY package*.json ./
 COPY prisma ./prisma/
