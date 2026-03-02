@@ -1,0 +1,7 @@
+{
+  "name": "my-refactor",
+  "description": "Surgical code refactoring to improve maintainability without changing behavior",
+  "version": "1.0.0",
+  "enabled": true,
+  "user-invokable": true
+}

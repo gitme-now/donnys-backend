@@ -211,36 +211,16 @@ export class ScrapeProcessor extends WorkerHost {
       videoId: video.id,
       title: video.title?.substring(0, 50),
     });
-
-    // Upload thumbnail to S3 if available
-    let thumbnailUrl: string | null = null;
-    if (video.thumbnail) {
-      try {
-        thumbnailUrl = await this.s3Service.downloadAndUploadThumbnail(
-          video.thumbnail,
-          `thumbnails/youtube/${channelHandle}`,
-        );
-        console.log('[ScrapeProcessor] thumbnail uploaded', {
-          videoId: video.id,
-          thumbnailUrl,
-        });
-      } catch (error) {
-        console.log('[ScrapeProcessor] thumbnail upload failed', {
-          videoId: video.id,
-          error: (error as Error).message,
-        });
-        // Continue without thumbnail
-      }
-    }
+    // Upload thumbnail to S3 if available (centralized helper)
+    const thumbnailUrl = await this.uploadThumbnail(
+      video.thumbnail,
+      `thumbnails/youtube/${channelHandle}`,
+      'video',
+      video.id,
+    );
 
     // Parse upload date (YYYYMMDD format)
-    let publishedAt: Date | null = null;
-    if (video.upload_date) {
-      const year = parseInt(video.upload_date.substring(0, 4));
-      const month = parseInt(video.upload_date.substring(4, 6)) - 1;
-      const day = parseInt(video.upload_date.substring(6, 8));
-      publishedAt = new Date(year, month, day);
-    }
+    const publishedAt = this.parseYtUploadDate(video.upload_date);
 
     // Upsert video to database
     const upserted = await this.prisma.video.upsert({
@@ -279,6 +259,47 @@ export class ScrapeProcessor extends WorkerHost {
       remoteId: video.id,
       title: upserted.title.substring(0, 50),
     });
+  }
+
+  private async uploadThumbnail(
+    url: string | undefined,
+    destDir: string,
+    kind: string,
+    id?: string,
+  ): Promise<string | null> {
+    if (!url) return null;
+    try {
+      const uploaded = await this.s3Service.downloadAndUploadThumbnail(url, destDir);
+      console.log('[ScrapeProcessor] thumbnail uploaded', {
+        kind,
+        id,
+        thumbnailUrl: uploaded,
+      });
+      return uploaded;
+    } catch (error) {
+      console.log('[ScrapeProcessor] thumbnail upload failed', {
+        kind,
+        id,
+        error: (error as Error).message,
+      });
+      return null;
+    }
+  }
+
+  private parseYtUploadDate(uploadDate?: string): Date | null {
+    if (!uploadDate) return null;
+    try {
+      const year = parseInt(uploadDate.substring(0, 4));
+      const month = parseInt(uploadDate.substring(4, 6)) - 1;
+      const day = parseInt(uploadDate.substring(6, 8));
+      return new Date(year, month, day);
+    } catch (err) {
+      console.log('[ScrapeProcessor] failed to parse upload_date', {
+        uploadDate,
+        error: (err as Error).message,
+      });
+      return null;
+    }
   }
 
   private async scrapeFacebook(
@@ -473,21 +494,12 @@ export class ScrapeProcessor extends WorkerHost {
       title: video.title.substring(0, 50),
     });
 
-    // Upload thumbnail to S3 if available
-    let thumbnailUrl: string | null = null;
-    if (video.thumbnail) {
-      try {
-        thumbnailUrl = await this.s3Service.downloadAndUploadThumbnail(
-          video.thumbnail,
-          `thumbnails/facebook/${channelHandle}`,
-        );
-      } catch (error) {
-        console.log('[ScrapeProcessor] thumbnail upload failed', {
-          videoId: video.id,
-          error: (error as Error).message,
-        });
-      }
-    }
+    const thumbnailUrl = await this.uploadThumbnail(
+      video.thumbnail,
+      `thumbnails/facebook/${channelHandle}`,
+      'facebook_video',
+      video.id,
+    );
 
     // Upsert video to database
     await this.prisma.video.upsert({
@@ -595,19 +607,12 @@ export class ScrapeProcessor extends WorkerHost {
     photo: { id: string; url: string; thumbnail?: string },
     channelHandle: string,
   ): Promise<void> {
-    let thumbnailUrl: string | null = null;
-    if (photo.thumbnail) {
-      try {
-        thumbnailUrl = await this.s3Service.downloadAndUploadThumbnail(
-          photo.thumbnail,
-          `thumbnails/facebook/${channelHandle}`,
-        );
-      } catch (error) {
-        console.log('[ScrapeProcessor] photo thumbnail upload failed', {
-          photoId: photo.id,
-        });
-      }
-    }
+    const thumbnailUrl = await this.uploadThumbnail(
+      photo.thumbnail,
+      `thumbnails/facebook/${channelHandle}`,
+      'facebook_photo',
+      photo.id,
+    );
 
     await this.prisma.photo.upsert({
       where: {
@@ -719,17 +724,12 @@ export class ScrapeProcessor extends WorkerHost {
     event: { id: string; title: string; url: string; thumbnail?: string },
     channelHandle: string,
   ): Promise<void> {
-    let thumbnailUrl: string | null = null;
-    if (event.thumbnail) {
-      try {
-        thumbnailUrl = await this.s3Service.downloadAndUploadThumbnail(
-          event.thumbnail,
-          `thumbnails/facebook/${channelHandle}`,
-        );
-      } catch (error) {
-        console.log('[ScrapeProcessor] event thumbnail upload failed');
-      }
-    }
+    const thumbnailUrl = await this.uploadThumbnail(
+      event.thumbnail,
+      `thumbnails/facebook/${channelHandle}`,
+      'facebook_event',
+      event.id,
+    );
 
     await this.prisma.event.upsert({
       where: {
